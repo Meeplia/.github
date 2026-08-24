@@ -1,0 +1,48 @@
+name: Zero-cost self-hosted verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.repository == 'Meeplia/.github' && github.ref == 'refs/heads/main'
+    runs-on:
+      - self-hosted
+      - Linux
+      - ARM64
+      - meeplia-ephemeral
+      - trusted-main-only
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify exact workflow context
+        shell: bash
+        run: |
+          test "$GITHUB_REPOSITORY" = "Meeplia/.github"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${GROQ_API_KEY:-}"
+          test -z "${ANTHROPIC_API_KEY:-}"
+
+      - name: Verify community files
+        shell: bash
+        run: |
+          test -s README.md
+          test -s SECURITY.md
+          test -s CONTRIBUTING.md
+          test -s .github/PULL_REQUEST_TEMPLATE.md
+          test -s .github/ISSUE_TEMPLATE/config.yml
+          test -s .github/ISSUE_TEMPLATE/bug.yml
+          test -s .github/ISSUE_TEMPLATE/feature.yml
+
+      - name: Check whitespace
+        run: git diff --check
